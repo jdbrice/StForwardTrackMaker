@@ -1,0 +1,1 @@
+cmake /tmp/star-sw -DSTAR_SRC=/tmp/star-cvs -DSTAR_PATCH=gcc540 -DCMAKE_INSTALL_PREFIX=/tmp/star-install -DCERNLIB_ROOT=/cern/2006 -DCMAKE_BUILD_TYPE=Debug

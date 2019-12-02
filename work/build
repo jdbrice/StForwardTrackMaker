@@ -1,0 +1,5 @@
+cd ../star-build
+# ./build
+make -j6
+make install
+cd ../work
