@@ -7,7 +7,11 @@
 4. OR skip 2-4 and download/import image from RCF
 5. Work inside the container by mounting StRoot into container
 
-## 1. Build the base image (star-sw repo)
+## 1. Download and setup Docker
+Follow directions here:
+https://docs.docker.com/v17.12/docker-for-mac/install/
+
+## 2. Build the base image (star-sw repo)
 ### Checkout the repo
 ```
 git clone git@github.com:jdbrice/star-sw.git
@@ -35,7 +39,7 @@ ubuntu                16.04               5f2bf26e3524        5 weeks ago       
 ```
 
 
-## 2. Build the star-sw image
+## 3. Build the star-sw image
 In the same directory (star-sw repo)
 
 ```
@@ -57,7 +61,7 @@ star-base             latest              2c3502bc20be        5 days ago        
 ubuntu                16.04               5f2bf26e3524        5 weeks ago         123MB
 ```
 
-## 3. Build the star-fwd image
+## 4. Build the star-fwd image
 move into a clean directory and checkout this repo:
 ```
 git clone git@github.com:jdbrice/StForwardTrackMaker.git
@@ -84,7 +88,7 @@ star-base             latest              2c3502bc20be        5 days ago        
 ubuntu                16.04               5f2bf26e3524        5 weeks ago         123MB
 ```
 
-## 4. OR skip 1-4 and download/import image from RCF
+## 5. OR skip 2-4 and download/import image from RCF
 If you have access to RCF you can download my pre-built image from RACF.
 I have them kept here: `/star/data03/pwg/jdb/FWD/docker/` with the image filenames taged with the date I created them.
 Download the image from RACF then on your local machine run:
@@ -104,7 +108,7 @@ docker save star-fwd:latest | gzip > "star-fwd_`date +"%m%d%Y"`.tar.gz"
 
 
 
-## 5. Use the star-fwd image for development
+## 6. Use the star-fwd image for development
 The following command allows you to mount the `StRoot` and `work` directories of this repo into the running container. That way you can edit the code on your local machine using the container to build and run.
 
 Develop inside the container:
