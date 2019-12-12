@@ -33,6 +33,7 @@ to make sure it builds the code - sometimes it does not pickup changes when the 
 ```sh
 root4star -b -q -l simple.C
 ```
+NOTE: The file `testg.fzd` is read for simulated hits whenever the tracking code is run. See below for simulation directions.
 
 ## Edit the configuration 
 The configuration file used when you run the above command is `config.xml`
@@ -96,3 +97,33 @@ Example configuration and some information about the various parts below:
 </config>
 
 ```
+
+
+
+## Generating simulated hits
+`starsim` will work inside the containers if `build_type=Debug` was used during the star-sw-test image build step.  
+`starsim` DOES NOT work correctly for generating simulation if built with the `Release` option.
+
+I have included `testg.kumac` for simple simulation generation:
+```sh
+MACRO testg tag=dev2021 nevents=100 ntrack=10 g3id=5 ptmn=0.2 ptmx=5.0 etamn=2.5 etamx=4.0 
+DETP GEOM [tag]
+GEXE $STAR_LIB/libStarAgmlUtil.so
+GEXE $STAR_LIB/xgeometry.so
+* AGUSER/GKINE NTRACK ID [ PTLOW PTHIGH YLOW YHIGH PHILOW PHIHIGH ZLOW ZHIGH option ]
+AGUSER/GKINE [ntrack] [g3id] [ptmn] [ptmx] [etamn] [etamx] 
+GFILE o testg.fzd
+TRIG [nevents]
+EXIT
+RETURN
+```
+
+This allows a particle gun type generator to be run. Use the `genfzd` to run it or as a template for running different types of simulation:
+
+genfzd:
+```sh
+starsim -w 0 -b testg.kumac nevents=10000 ntrack=1 etamn=2.4 etamx=4.1 ptmn=4.5 ptmx=5.0
+```
+
+This produced 10000 events with 1 track each in the eta range 2.4 to 4.1 in pT range 4.5 to 5.0, flat in phi. Use `g3id` to set the geant particle id  
+
