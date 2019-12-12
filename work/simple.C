@@ -5,7 +5,7 @@ void simple( const char *filename = 0 )
    if (filename) infile = filename;
 
    gROOT->LoadMacro("bfc.C");
-   bfc(0, "fzin agml", infile );
+   bfc(0, "fzin agml sdt20181215", infile );
    gSystem->Load("libgenfit2.so");
    gSystem->Load("libKiTrack.so");
    // gSystem->Load("libStgUtil.so");
@@ -48,7 +48,7 @@ void simple( const char *filename = 0 )
    // Loop over all events in the file...
    int stat = 0;
 
-   while (stat == 0 && count < 1000) {
+   while (stat == 0 ) {
 
       cout << "===============================================================================" << endl;
       cout << "===============================================================================" << endl;
@@ -61,8 +61,13 @@ void simple( const char *filename = 0 )
       stat =    chain->Make();
 
       if (stat) break;
+   
    }
 
+   cout << "HERE IS FINISH" << endl;
    gmk->Finish();
+
+   cout << "END of simple.C" << endl;
+
 
 }

@@ -79,7 +79,7 @@
 	</TrackFinder>
 
 	<TrackFitter constB="true" display="false">
-		<Vertex sigmaXY="0.01" sigmaZ="1" includeInFit="false" />
+		<Vertex sigmaXY="0.01" sigmaZ="1" includeInFit="true" />
 		
 		<!-- for MC only -->
 		<Hits sigmaXY="0.1" useFCM="true" />

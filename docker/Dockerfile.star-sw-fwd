@@ -1,14 +1,17 @@
 FROM star-sw-test
 
-WORKDIR /tmp/star-sw
-
-RUN git checkout stg-kitrack-genfit 
-
-COPY target_properties.cmake /tmp/star-sw/cmake/target_properties.cmake
-
-RUN cd ../star-build/ && cmake /tmp/star-sw -DSTAR_SRC=/tmp/star-cvs -DSTAR_PATCH=gcc540 -DCMAKE_INSTALL_PREFIX=/tmp/star-install -DCERNLIB_ROOT=/cern/2006 -DCMAKE_BUILD_TYPE=Debug && make -j $(nproc) && make install
+WORKDIR /tmp/
+RUN rm -rf /tmp/star-sw
+RUN git clone https://github.com/jdbrice/star-sw.git \
+	&& cd /tmp/star-sw \
+	&&  git checkout stg-kitrack-genfit 
+# COPY target_properties.cmake /tmp/star-sw/cmake/target_properties.cmake
 
 COPY build /tmp/star-build/
 RUN chmod +x /tmp/star-build/build
+
+RUN cd /tmp/star-build/ && ./build && make StgMaker -j $(nproc) && make install -j $(nproc)
+
+
 
 

@@ -1,7 +1,5 @@
 #define LOGURU_IMPLEMENTATION 1
 
-#define streamlog_out(LEVEL) do {} while (0);
-
 #include "StgMaker/StgMaker.h"
 #include "StgMaker/include/Tracker/FwdTracker.h"
 #include "StgMaker/include/Tracker/FwdHit.h"
@@ -109,7 +107,7 @@ public:
    // will be provided by the maker.
    void initialize()
    {
-      LOG_INFO << "ForwardTracker::initialize()" << endm;
+      LOG_INFO << "ForwardTracker::initialize() TEST" << endm;
       nEvents = 1; // only process single event
 
       // Create the forward system...
@@ -126,7 +124,7 @@ public:
    }
 
    void finish() {
-
+      LOG_SCOPE_FUNCTION( INFO);
       qPlotter->finish();
       writeEventHistograms();
    }

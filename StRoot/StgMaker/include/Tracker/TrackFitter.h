@@ -262,6 +262,9 @@ public:
          LOG_F( ERROR, "Cannot get pT seed, only had %lu points", trackCand.size() );
       }
 
+      if ( isinf(curv) )
+         curv = 999999.9;
+
       LOG_F( INFO, "SimpleCircle Fit to (%lu, %lu, %lu) = %f", i0, i1, i2, curv );
       return curv;
    }

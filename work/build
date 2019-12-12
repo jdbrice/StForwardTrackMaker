@@ -1,5 +1,5 @@
 cd ../star-build
-# ./build
-make -j6
-make install
+./build
+make StgMaker -j6
+make install -j6
 cd ../work
