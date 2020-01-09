@@ -4,7 +4,7 @@ See `docker/README.md` for direction for setting up and building the docker imag
 
 Develop inside the container:
 ```
-docker run --rm --name FWD -ti -w /tmp/work -v <path_to_repo>/StRoot:/tmp/star-sw/StRoot -v <path_to_repo>/work:/tmp/work star-fwd bash
+docker run --rm --name FWD -ti -w /tmp/work -v <path_to_repo>/StRoot:/tmp/star-sw-master/StRoot -v <path_to_repo>/work:/tmp/work star-fwd bash
 ```
 this will start you inside the container with you local `StRoot` and `work` directories from this repo mounted.
 You can edit the code/files in these directories and run them inside the container.

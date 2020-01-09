@@ -10,6 +10,7 @@ void simple( const char *filename = 0 )
    gSystem->Load("libKiTrack.so");
    // gSystem->Load("libStgUtil.so");
    gSystem->Load("libStarClassLibrary.so");
+   gSystem->Load("libStBichsel.so");
    gSystem->Load( "libStEvent.so" );
    gSystem->Load("libStgMaker.so");
 

@@ -1,0 +1,17 @@
+FROM starbnl/star-sw-build:SL19d_2
+
+WORKDIR /tmp/
+# install git needed to pull the dependencies
+RUN yum install -y git
+
+RUN rm -rf /tmp/star-sw-master && git clone https://github.com/jdbrice/star-sw.git star-sw-master
+
+COPY build /tmp/star-build/
+RUN chmod +x /tmp/star-build/build
+
+RUN cd /tmp/star-build/ && ./build && make StgMaker -j $(nproc) && make install -j $(nproc)
+
+
+
+
+
