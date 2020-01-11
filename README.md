@@ -1,13 +1,14 @@
 ### StForwardTracker Development 
 
-See `docker/README.md` for direction for setting up and building the docker images.
+You can use the images on Docker Hub (instructions below). If you want to build your own images then see `docker/README.md` for direction for setting up and building the docker images.
 
 Develop inside the container:
 ```
-docker run --rm --name FWD -ti -w /tmp/work -v <path_to_repo>/StRoot:/tmp/star-sw-master/StRoot -v <path_to_repo>/work:/tmp/work star-fwd bash
+docker run --rm --name FWD -ti -w /tmp/work -v <path_to_repo>/StRoot:/tmp/star-sw-master/StRoot -v <path_to_repo>/work:/tmp/work jdbburg/star-fwd:SL19d_2 bash
 ```
 this will start you inside the container with you local `StRoot` and `work` directories from this repo mounted.
-You can edit the code/files in these directories and run them inside the container.
+You can edit the code/files in these directories and run them inside the container. The first time you run this it may take some time to download the images. After the first time it should be fast.
+
 NOTE: the `--rm` flag means that the container will be destroyed when you run `exit` from inside the container. Your work should be saved in the mounted volumes, so this should be OK, if not remove the `--rm` flag.
 
 Inside the container your working directory should be `/tmp/work/`
