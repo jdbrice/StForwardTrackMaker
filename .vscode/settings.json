@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "*SConstruct": "python",
-        "simple.C": "cpp",
-        "gun.C": "cpp"
-    }
-}

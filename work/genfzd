@@ -1,1 +1,0 @@
-starsim -w 0 -b testg.kumac nevents=10000 ntrack=1 etamn=2.4 etamx=4.1 ptmn=4.5 ptmx=5.0

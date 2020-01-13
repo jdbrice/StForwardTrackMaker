@@ -279,9 +279,9 @@ int StgMaker::Make()
 
    int nstg = g2t_stg_hits->GetNRows();
 
-   //  LOG_INFO << "nstg = " << nstg << endm;
+   LOG_INFO << "nstg = " << nstg << endm;
    for ( int i = 0; i < nstg; i++ ) {
-
+      LOG_INFO << "stg_hit [" << i << "]" << endm;
       g2t_fts_hit_st *git = (g2t_fts_hit_st *)g2t_stg_hits->At(i); if (0 == git) continue; // geant hit
       int   track_id  = git->track_p;
       int   volume_id = git->volume_id;
@@ -290,7 +290,7 @@ int StgMaker::Make()
       float y         = git->x[1];
       float z         = git->x[2];
 
-      //    LOG_INFO << "track_id=" << track_id << " volume_id=" << volume_id << " plane_id=" << plane_id << " x/y/z " << x << "/" << y << "/" << z << endm;
+         LOG_INFO << "track_id=" << track_id << " volume_id=" << volume_id << " plane_id=" << plane_id << " x/y/z " << x << "/" << y << "/" << z << endm;
 
       FwdHit *hit = new FwdHit(count++, x, y, z, -plane_id, track_id, mcTrackMap[track_id] );
 
@@ -343,7 +343,7 @@ int StgMaker::Make()
 
    // Process single event
    mForwardTracker -> doEvent();
-
+   return kStOK;
    StEvent *event = static_cast<StEvent *>(GetInputDS("StEvent"));
 
    if ( 0 == event ) {

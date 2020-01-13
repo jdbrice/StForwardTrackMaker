@@ -1,1 +1,0 @@
-cmake /tmp/star-sw-master -DSTAR_SRC=/tmp/star-cvs-SL19d_2 -DSTAR_PATCH=gcc540 -DCMAKE_INSTALL_PREFIX=/tmp/star-install -DCERNLIB_ROOT=/cern/2006 -DCMAKE_BUILD_TYPE=Release 
