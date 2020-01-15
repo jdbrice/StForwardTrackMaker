@@ -52,7 +52,7 @@ public:
 		TGeoManager::Import( cfg.get<string>( "Geometry", "fGeom.root" ).c_str() );
 		genfit::MaterialEffects::getInstance()->init(new genfit::TGeoMaterialInterface());
 		//		genfit::MaterialEffects::getInstance()->setDebugLvl(10); // setNoEffects(); // TEST
-		//		genfit::MaterialEffects::getInstance()->setNoEffects(); // TEST
+		genfit::MaterialEffects::getInstance()->setNoEffects( cfg.get<bool>( "TrackFitter::noMaterialEffects", false ) ); 
 		// TODO : Load the STAR MagField
 		genfit::AbsBField *bField = nullptr;
 
@@ -129,6 +129,7 @@ public:
 		FakeHitCov.ResizeTo(2, 2);
 		FakeHitCov.UnitMatrix();
 		FakeHitCov *= detectorResolution * detectorResolution;
+		LOG_F( INFO, "FakeHitCov : reso = %0.2f", detectorResolution );
 
 		useFCM = cfg.get<bool>( "TrackFitter.Hits:useFCM", false );
 
@@ -380,9 +381,6 @@ public:
 	TVector3 refitTrackWithSiHits( genfit::Track *originalTrack, std::vector<KiTrack::IHit *> si_hits ){
 		LOG_SCOPE_FUNCTION( INFO );
 
-		
-		
-
 		TVector3  pOrig = originalTrack->getCardinalRep()->getMom(originalTrack->getFittedState(1, originalTrack->getCardinalRep()));
 		auto cardinalStatus = originalTrack->getFitStatus(originalTrack->getCardinalRep());
 
@@ -395,14 +393,29 @@ public:
 		auto trackRepNeg = new genfit::RKTrackRep(pdg_mu_minus);
 
 		auto trackPoints = originalTrack->getPointsWithMeasurement();
+		LOG_F( INFO, "trackPoints.size() = %lu", trackPoints.size() );
+		if ( trackPoints.size() < 5 ) {
+			LOG_F( ERROR, "TrackPoints missing" );
+			return pOrig;
+		}
 
 		TVectorD rawCoords = trackPoints[0]->getRawMeasurement()->getRawHitCoords();
 		TVector3 seedPos( rawCoords(0), rawCoords(1), rawCoords(2));
 		TVector3 seedMom = pOrig;
+		LOG_F( INFO, "SeedMom( pT=%0.2f, eta=%0.2f, phi=%0.2f )", seedMom.Pt(), seedMom.Eta(), seedMom.Phi() );
+		LOG_F( INFO, "SeedPos( X=%0.2f, Y=%0.2f, Z=%0.2f )", seedPos.X(), seedPos.Y(), seedPos.Z() );
+
 		auto refTrack = new genfit::Track(trackRepPos, seedPos, seedMom);
 		refTrack->addTrackRep( trackRepNeg );
 
 		genfit::Track &fitTrack = *refTrack;
+
+		size_t first_tp = 0;
+		if (includeVertexInFit){
+			// clone the PRIMARY VERTEX into this track
+			fitTrack.insertPoint( new genfit::TrackPoint( trackPoints[0]->getRawMeasurement(), &fitTrack ) );
+			first_tp = 1; // start on the 1st stgc hit below
+		}
 		
 
 		// initialize the hit coords on plane
@@ -435,10 +448,13 @@ public:
 			measurement->setPlane( plane, planeId);
 			fitTrack.insertPoint(new genfit::TrackPoint(measurement, &fitTrack));
 		}
+		LOG_F( INFO, "Vertex plus Si, Track now has %lu points", fitTrack.getNumPoints() );
 
-		LOG_F( INFO, "Track now has %lu points", fitTrack.getNumPoints() );
-
-		LOG_F( INFO, "Is Track Fitted Already? %d", fitter->isTrackFitted( &fitTrack, fitTrack.getCardinalRep() ) );
+		for ( int i = first_tp; i < trackPoints.size(); i++ ){
+			// clone the track points into this track
+			fitTrack.insertPoint( new genfit::TrackPoint( trackPoints[i]->getRawMeasurement(), &fitTrack) );
+		}
+		LOG_F( INFO, "Vertex plus Si plus Stgc, Track now has %lu points", fitTrack.getNumPoints() );
 
 
 		try {

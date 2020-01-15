@@ -158,8 +158,8 @@ public:
 		TNamed n( "cfg", cfg.toXml() );
 		n.Write();
 
-		fOutput->mkdir( "Input/" );
-		fOutput->cd("Input/");
+		// fOutput->mkdir( "Input/" );
+		// fOutput->cd("Input/");
 		writeHistograms();
 
 		fOutput->mkdir( "Fit/" );
@@ -228,6 +228,7 @@ public:
 		LOG_SCOPE_FUNCTION( INFO );
 
 		hist[ "input_nhits" ] = new TH1I( "input_nhits", ";# hits", 1000, 0, 1000 );
+		hist[ "nAttepmtedFits" ] = new TH1I( "nAttepmtedFits", ";;#attemtped fits", 10, 0, 10 );
 	}
 
 	void fillHistograms(){
@@ -386,8 +387,9 @@ public:
 		}
 
 		if ( cfg.get<bool>( "TrackFitter:refitSi", true ) ){
+			LOG_SCOPE_F( INFO, "Refitting" );
 			addSiHits();
-
+			LOG_F( INFO, "Finished adding Si hits" );
 		}
 
 
@@ -398,6 +400,7 @@ public:
 		LOG_SCOPE_FUNCTION( INFO );
 
 		if ( doTrackFitting ) {
+			hist[ "nAttepmtedFits" ]->Fill( 1 );
 			TVector3 p = trackFitter->fitTrack( track );
 			fitMoms.push_back(p);
 			fitStatus.push_back( trackFitter->getStatus() );
@@ -662,9 +665,6 @@ public:
 
 	void addSiHits(  ){
 		LOG_SCOPE_FUNCTION( INFO );
-
-
-		
 		std::map<int, std::vector<KiTrack::IHit *> > hitmap = hitLoader -> loadSi( 0 );
 
 		LOG_F( INFO, "hitmap size = %lu (should be 3)", hitmap.size() );
@@ -701,14 +701,12 @@ public:
 				TVector3 p = trackFitter->refitTrackWithSiHits( _globalTracks[i], hits_to_add );
 
 				LOG_F( INFO, "Global track now has: %lu point", _globalTracks[i]->getNumPoints() );
+				LOG_F(INFO, "pt was: %0.2f and now is: %0.2f", fitMoms[ i ].Perp(), p.Perp() );
 				fitMoms[ i ] = p;
 
 			}
-
-
-		}
-
-	}
+		} // loop on globals
+	} // addSiHits
 
 	std::vector<KiTrack::IHit *> findSiHitsNearMe( std::vector<KiTrack::IHit *> &available_hits, genfit::MeasuredStateOnPlane &msp, double dphi = 0.1 ){
 		LOG_SCOPE_FUNCTION( INFO );
@@ -748,7 +746,7 @@ protected:
 	map<string, string> cmdLineConfig;
 	std::string configFile;
 	// event level summary histograms
-	map<string, TH1 *> histograms;
+	// map<string, TH1 *> histograms;
 
 	vector<size_t> trueTracksWithNHits;
 	float total7HitTrue;
