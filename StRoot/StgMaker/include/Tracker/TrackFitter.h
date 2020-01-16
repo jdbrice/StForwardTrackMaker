@@ -31,6 +31,7 @@
 #include "StgMaker/include/Tracker/STARField.h"
 #include "StgMaker/include/Tracker/loguru.h"
 #include "StgMaker/XmlConfig/XmlConfig.h"
+#include "StgMaker/XmlConfig/HistoBins.h"
 
 
 // hack of a global field pointer
@@ -40,6 +41,7 @@ class TrackFitter
 {
 
 public:
+	
 	TrackFitter( jdb::XmlConfig &_cfg ) : cfg(_cfg)
 	{
 		fTrackRep = 0;
@@ -81,7 +83,7 @@ public:
 		// init the fitter
 		fitter = new genfit::KalmanFitterRefTrack( );
 		//	fitter = new genfit::KalmanFitter( );
-		fitter->setMaxIterations(2);
+		// fitter->setMaxIterations(2);
 		//		fitter->setDebugLvl(10);
 		// track representation
 		// pion_track_rep =
@@ -129,7 +131,13 @@ public:
 		FakeHitCov.ResizeTo(2, 2);
 		FakeHitCov.UnitMatrix();
 		FakeHitCov *= detectorResolution * detectorResolution;
-		LOG_F( INFO, "FakeHitCov : reso = %0.2f", detectorResolution );
+		
+
+		double siDetectorResolution(cfg.get<float>( "TrackFitter.Hits:sigmaSiXY", 0.1 )); // resolution of sTGC detectors
+		FakeSiHitCov.ResizeTo(2, 2);
+		FakeSiHitCov.UnitMatrix();
+		FakeSiHitCov *= siDetectorResolution * siDetectorResolution;
+		LOG_F( INFO, "Si Hit Covariance Matrix resolution = %f", siDetectorResolution  );
 
 		useFCM = cfg.get<bool>( "TrackFitter.Hits:useFCM", false );
 
@@ -147,6 +155,13 @@ public:
 
 		makeHistograms();
 
+	}
+
+	void setBinLabels( TH1 *h, vector<string> labels ){
+		for ( int i = 1; i < labels.size(); i++ ){
+			h->GetXaxis()->SetBinLabel( i, labels[i-1].c_str() );
+			h->SetBinContent( i, 0 );
+		}
 	}
 
 	void makeHistograms()
@@ -170,7 +185,13 @@ public:
 		n = "delta_fit_seed_pT"; hist[ n ] 		= new TH1F( n.c_str(), ";#Delta( fit, seed ) pT (GeV/c)", 500, -5, 5 );
 		n = "delta_fit_seed_eta"; hist[ n ] 	= new TH1F( n.c_str(), ";#Delta( fit, seed ) eta", 500, 0, 5 );
 		n = "delta_fit_seed_phi"; hist[ n ] 	= new TH1F( n.c_str(), ";#Delta( fit, seed ) phi", 500, -5, 5 );
+
+		n = "FitStatus"; hist[ n ] 	= new TH1F( n.c_str(), ";", 5, 0, 5 );
+		jdb::HistoBins::labelAxis( hist[ n ]->GetXaxis(), { "Total", "Pass", "Fail", "GoodCardinal", "Exception" } );
+
 	}
+
+	
 
 	void writeHistograms()
 	{
@@ -394,13 +415,15 @@ public:
 
 		auto trackPoints = originalTrack->getPointsWithMeasurement();
 		LOG_F( INFO, "trackPoints.size() = %lu", trackPoints.size() );
-		if ( trackPoints.size() < 5 ) {
+		if ( (trackPoints.size() < 5 && includeVertexInFit) || trackPoints.size() < 4 ) {
 			LOG_F( ERROR, "TrackPoints missing" );
 			return pOrig;
 		}
 
 		TVectorD rawCoords = trackPoints[0]->getRawMeasurement()->getRawHitCoords();
-		TVector3 seedPos( rawCoords(0), rawCoords(1), rawCoords(2));
+		double z = 280.9; //first Stgc, a hack for now
+		if ( includeVertexInFit ) z = rawCoords(2);
+		TVector3 seedPos( rawCoords(0), rawCoords(1), z );
 		TVector3 seedMom = pOrig;
 		LOG_F( INFO, "SeedMom( pT=%0.2f, eta=%0.2f, phi=%0.2f )", seedMom.Pt(), seedMom.Eta(), seedMom.Phi() );
 		LOG_F( INFO, "SeedPos( X=%0.2f, Y=%0.2f, Z=%0.2f )", seedPos.X(), seedPos.Y(), seedPos.Z() );
@@ -428,7 +451,7 @@ public:
 
 		// add the hits to the track
 		for ( auto h : si_hits ){
-			TMatrixDSym hitCovMat = FakeHitCov;
+			TMatrixDSym hitCovMat = FakeSiHitCov;
 
 			if ( useFCM == false )
 				hitCovMat = getCovMat( h );
@@ -464,17 +487,18 @@ public:
 			// do the fit
 			fitter->processTrack(&fitTrack);
 
+			fitTrack.checkConsistency();
+			fitTrack.determineCardinalRep(); // this chooses the lowest chi2 fit result as cardinal
+
 			{
 				// print fit result
-				LOG_SCOPE_F(INFO, "Fitted State AFTER Refit");
-				fitTrack.getFittedState().Print();
+				// LOG_SCOPE_F(INFO, "Fitted State AFTER Refit");
+				// fitTrack.getFittedState().Print();
 			}
 		}
 		catch (genfit::Exception &e) {
-			std::cerr << e.what();
-			std::cerr << "Exception on track RE-fit" << std::endl;
+			LOG_F( INFO, "Exception on track RE-fit : %s", e.what() );
 		}
-
 
 		
 		if ( fitTrack.getFitStatus( fitTrack.getCardinalRep() )->isFitConverged() == false ){
@@ -583,6 +607,7 @@ public:
 		LOG_SCOPE_FUNCTION(INFO);
 
 		LOG_F( INFO, "Track candidate size: %lu", trackCand.size() );
+		this->hist[ "FitStatus" ] -> Fill( "Total", 1 );
 
 		// The PV information, if we want to use it
 		TVectorD pv(3);
@@ -689,11 +714,14 @@ public:
 			fitter->processTrack(&fitTrack);
 
 			// print fit result
-			fitTrack.getFittedState().Print();
+			// fitTrack.getFittedState().Print();
 		}
 		catch (genfit::Exception &e) {
-			std::cerr << e.what();
-			std::cerr << "Exception on track fit" << std::endl;
+			LOG_F( INFO, "%s", e.what() );
+			LOG_F( INFO, "Exception on track fit" );
+			// std::cerr << e.what();
+			// std::cerr << "Exception on track fit" << std::endl;
+			hist[ "FitStatus" ]->Fill( "Exception", 1 );
 		}
 
 		LOG_F( INFO, "Get fit status and momentum" );
@@ -704,6 +732,7 @@ public:
 			//check
 			fitTrack.checkConsistency();
 
+			fitTrack.determineCardinalRep();
 			auto cardinalRep = fitTrack.getCardinalRep();
 			auto cardinalStatus = fitTrack.getFitStatus(cardinalRep);
 			fStatus   = *cardinalStatus; // save the status of last fit
@@ -713,6 +742,9 @@ public:
 
 			// Clone the cardinal rep for persistency
 			fTrackRep = cardinalRep->clone(); // save the result of the fit
+			if (fitTrack.getFitStatus(cardinalRep)->isFitConverged() ) {
+				this->hist[ "FitStatus" ] -> Fill( "GoodCardinal", 1 );
+			}
 
 			if ( fitTrack.getFitStatus(trackRepPos)->isFitConverged() == false &&
 					fitTrack.getFitStatus(trackRepNeg)->isFitConverged() == false ) {
@@ -722,8 +754,11 @@ public:
 				LOG_F( INFO, "Estimated Curv: %f", curv );
 				LOG_F( INFO, "SeedPosALT( X=%0.2f, Y=%0.2f, Z=%0.2f )", seedPos.X(), seedPos.Y(), seedPos.Z() );
 				p.SetXYZ(0, 0, 0);
+				this->hist[ "FitStatus" ] -> Fill( "Fail", 1 );
 				return p;
 			}
+
+			
 
 			// fStatus = *cardinalStatus; // save the status of last fit
 			p = cardinalRep->getMom(fitTrack.getFittedState(1, cardinalRep));
@@ -754,6 +789,7 @@ public:
 			LOG_F( INFO, "Estimated Curv: %f", curv );
 			LOG_F( INFO, "SeedPosALT( X=%0.2f, Y=%0.2f, Z=%0.2f )", seedPos.X(), seedPos.Y(), seedPos.Z() );
 			p.SetXYZ(0, 0, 0);
+			this->hist[ "FitStatus" ]->Fill( "Exception", 1 );
 			return p;
 		}
 
@@ -769,6 +805,7 @@ public:
 		LOG_F( INFO, "Estimated Curv: %f", curv );
 		LOG_F( INFO, "SeedPosALT( X=%0.2f, Y=%0.2f, Z=%0.2f )", seedPos.X(), seedPos.Y(), seedPos.Z() );
 		LOG_F( INFO, "FitMom( pT=%0.2f, eta=%0.2f, phi=%0.2f )", p.Pt(), p.Eta(), p.Phi() );
+		hist[ "FitStatus" ]->Fill( "Pass", 1 );
 
 		if ( MAKE_HIST ) {
 			this->hist[ "delta_fit_seed_pT" ]->Fill( p.Pt() - seedMom.Pt() );
@@ -817,6 +854,7 @@ private:
 	vector<genfit::SharedPlanePtr> SiDetPlanes;
 	bool useFCM = false;
 	TMatrixDSym FakeHitCov;
+	TMatrixDSym FakeSiHitCov;
 
 	TRandom *rand = nullptr;
 
