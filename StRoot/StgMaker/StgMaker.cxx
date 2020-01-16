@@ -326,9 +326,9 @@ int StgMaker::Make()
       int   track_id  = git->track_p;
       int   volume_id = git->volume_id;
       int   plane_id  = (volume_id - 1) / 4 ;// from 1 - 16. four chambers per station
-      float x         = git->x[0];
-      float y         = git->x[1];
-      float z         = git->x[2];
+      float x         = git->x[0] + gRandom->Gaus( 0, 0.01 );
+      float y         = git->x[1] + gRandom->Gaus( 0, 0.01 );
+      float z         = git->x[2] + gRandom->Gaus( 0, 0.01 );
 
       LOG_F( INFO, "STGC Hit: volume_id=%d, plane_id=%d, (%f, %f, %f)", volume_id, plane_id, x, y, z );
       histograms[ "stgc_volume_id" ] ->Fill( volume_id );
@@ -373,9 +373,9 @@ int StgMaker::Make()
       int   track_id  = git->track_p;
       int   volume_id = git->volume_id; // 4, 5, 6
       int   plane_id  = volume_id - 4;
-      float x         = git->x[0];
-      float y         = git->x[1];
-      float z         = git->x[2];
+      float x         = git->x[0] + gRandom->Gaus( 0, 0.0001 );
+      float y         = git->x[1] + gRandom->Gaus( 0, 0.0001 );
+      float z         = git->x[2] + gRandom->Gaus( 0, 0.0001 );
 
 
       
