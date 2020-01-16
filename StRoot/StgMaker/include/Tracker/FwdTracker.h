@@ -228,7 +228,15 @@ public:
 		LOG_SCOPE_FUNCTION( INFO );
 
 		hist[ "input_nhits" ] = new TH1I( "input_nhits", ";# hits", 1000, 0, 1000 );
-		hist[ "nAttepmtedFits" ] = new TH1I( "nAttepmtedFits", ";;#attemtped fits", 10, 0, 10 );
+		hist[ "nAttemptedFits" ] = new TH1I( "nAttemptedFits", ";;# attempted fits", 10, 0, 10 );
+		hist[ "nPossibleFits" ] = new TH1I( "nPossibleFits", ";;# possible fits", 10, 0, 10 );
+		// refit with silicon
+		hist[ "nPossibleReFits" ] = new TH1I( "nPossibleReFits", ";;# possible REfits", 10, 0, 10 );
+		hist[ "nAttemptedReFits" ] = new TH1I( "nAttemptedReFits", ";;#attempted REfits", 10, 0, 10 );
+		hist[ "nFailedReFits" ] = new TH1I( "nFailedReFits", ";;# failed REfits", 10, 0, 10 );
+
+		hist[ "FitStatus" ] = new TH1I( "FitStatus", ";;# failed REfits", 10, 0, 10 );
+		jdb::HistoBins::labelAxis( hist[ "FitStatus" ]->GetXaxis(), { "Seeds", "AttemptFit", "GoodFit", "BadFit", "GoodCardinal", "PossibleReFit", "AttemptReFit", "GoodReFit", "BadReFit" } );
 	}
 
 	void fillHistograms(){
@@ -372,10 +380,6 @@ public:
 		if ( mcTrackFinding ) {
 			doMcTrackFinding( mcTrackMap );
 			qPlotter->summarizeEvent( recoTracks, mcTrackMap, fitMoms, fitStatus );
-			//				recoTracks.clear();
-			//				fitMoms.clear();
-			//				fitStatus.clear();
-			// trackFitter->finishEvent();
 			return;
 		}
 
@@ -386,11 +390,16 @@ public:
 			doTrackIteration( iIteration, hitmap );
 		}
 
+		/***********************************************/
+		// REFIT with Silicon hits
 		if ( cfg.get<bool>( "TrackFitter:refitSi", true ) ){
 			LOG_SCOPE_F( INFO, "Refitting" );
 			addSiHits();
 			LOG_F( INFO, "Finished adding Si hits" );
+		} else {
+			LOG_F( INFO, "Skipping Si Refit" );
 		}
+		/***********************************************/
 
 
 		qPlotter->summarizeEvent( recoTracks, mcTrackMap, fitMoms, fitStatus );
@@ -399,11 +408,25 @@ public:
 	void trackFitting( Seed_t &track ){
 		LOG_SCOPE_FUNCTION( INFO );
 
+		hist[ "FitStatus" ]->Fill( "Seeds", 1 );
 		if ( doTrackFitting ) {
-			hist[ "nAttepmtedFits" ]->Fill( 1 );
+			hist[ "FitStatus" ]->Fill( "AttemptFit", 1 );
 			TVector3 p = trackFitter->fitTrack( track );
+
+			if ( p.Perp() > 1e-1 ){
+				hist[ "FitStatus" ]->Fill( "GoodFit", 1 );
+			} else {
+				hist[ "FitStatus" ]->Fill( "BadFit", 1 );
+			}
+			
 			fitMoms.push_back(p);
 			fitStatus.push_back( trackFitter->getStatus() );
+
+			auto ft = trackFitter->getTrack();
+			if ( ft->getFitStatus( ft->getCardinalRep() )->isFitConverged() ){
+				hist[ "FitStatus" ]->Fill( "GoodCardinal", 1 );
+			}
+			
 			// Clone the track rep
 			_globalTrackReps.push_back( trackFitter->getTrackRep()->clone() );
 			genfit::Track *mytrack = new genfit::Track( *trackFitter->getTrack() );
@@ -444,13 +467,6 @@ public:
 
 		for ( auto t : recoTracks ) {
 			trackFitting( t );
-			// TVector3 p = trackFitter->fitTrack( t );
-			// fitMoms.push_back(p);
-			// fitStatus.push_back( trackFitter->getStatus() );
-			// // Clone the track rep
-			// _globalTrackReps.push_back( trackFitter->getTrackRep()->clone() );
-			// genfit::Track *mytrack = new genfit::Track( *trackFitter->getTrack() );
-			// _globalTracks.push_back( mytrack );
 		}
 
 		qPlotter->afterIteration( 0, recoTracks );
@@ -598,31 +614,12 @@ public:
 			recoTracks.insert( recoTracks.end(), acceptedTracks.begin(), acceptedTracks.end() );
 
 
+			// Fit each accepted track seed
 			for ( auto t : acceptedTracks ) {
 				trackFitting( t );
-				// if ( doTrackFitting ) {
-				// 	TVector3 p = trackFitter->fitTrack( t );
-				// 	fitMoms.push_back(p);
-				// 	fitStatus.push_back( trackFitter->getStatus() );
-				// 	// Clone the track rep
-				// 	_globalTrackReps.push_back( trackFitter->getTrackRep()->clone() );
-				// 	genfit::Track *mytrack = new genfit::Track( *trackFitter->getTrack() );
-				// 	float qatruth;
-				// 	int idtruth = MCTruthUtils::domCon( t, qatruth );
-				// 	mytrack->setMcTrackId( idtruth );
-				// 	_globalTracks.push_back( mytrack );
-				// }
-
 			}
 
 			qPlotter->afterIteration( iIteration, acceptedTracks );
-			// checkFoundTracks( hits_map_by_track, acceptedTracks, "2" );
-
-			// Find vertex
-			// VertexFinder vf;
-			// vf.findVertex( recoTracks );
-
-
 
 			/*************************************************************/
 			// Step 5
@@ -651,8 +648,6 @@ public:
 
 			for ( auto t : tracks ) {
 				trackFitting( t );
-				// TVector3 p = trackFitter->fitTrack( t );
-				// fitMoms.push_back(p);
 			}
 
 			qPlotter->afterIteration( iIteration, tracks );
@@ -672,21 +667,28 @@ public:
 		// loop on global tracks
 		for ( size_t i = 0; i < _globalTracks.size(); i++ ){
 
-
-
 			if ( _globalTracks[i]->getFitStatus( _globalTracks[i]->getCardinalRep() )->isFitConverged() == false ){
 				LOG_F( WARNING, "Original Track fit did not converge, skipping" );
 				return;
 			}
 
-			auto msp2 = trackFitter->projectTo( 2, _globalTracks[i] );
-			auto msp1 = trackFitter->projectTo( 1, _globalTracks[i] );
-			auto msp0 = trackFitter->projectTo( 0, _globalTracks[i] );
+			hist[ "FitStatus" ]->Fill( "PossibleReFit", 1);
 
-			// now look for Si hits near these
-			auto hits_near_disk2 = findSiHitsNearMe( hitmap[2], msp2 );
-			auto hits_near_disk1 = findSiHitsNearMe( hitmap[1], msp1 );
-			auto hits_near_disk0 = findSiHitsNearMe( hitmap[0], msp0 );
+			std::vector<KiTrack::IHit *> hits_near_disk0;
+			std::vector<KiTrack::IHit *> hits_near_disk1;
+			std::vector<KiTrack::IHit *> hits_near_disk2;
+			try {
+				auto msp2 = trackFitter->projectTo( 2, _globalTracks[i] );
+				auto msp1 = trackFitter->projectTo( 1, _globalTracks[i] );
+				auto msp0 = trackFitter->projectTo( 0, _globalTracks[i] );
+
+				// now look for Si hits near these
+				hits_near_disk2 = findSiHitsNearMe( hitmap[2], msp2 );
+				hits_near_disk1 = findSiHitsNearMe( hitmap[1], msp1 );
+				hits_near_disk0 = findSiHitsNearMe( hitmap[0], msp0 );
+			} catch ( genfit::Exception &e ){
+				LOG_F( ERROR, "Failed to project to Si disk: %s", e.what() );
+			}
 
 			LOG_F( INFO, "There are (%lu, %lu, %lu) hits near the track on Si disks 0, 1, 2", hits_near_disk0.size(), hits_near_disk1.size(), hits_near_disk2.size() );
 			LOG_F( INFO, "Track already has %lu points", _globalTracks[i]->getNumPoints() );
@@ -695,10 +697,20 @@ public:
 			// This is the simplest/best case
 			if ( hits_near_disk0.size() == 1 && hits_near_disk1.size() == 1 && hits_near_disk2.size() == 1 ){
 				LOG_F( INFO, "Found one-to-one matching on all three Si disks, do REFIT" );
+				
+				hist[ "FitStatus" ]-> Fill ("AttemptReFit", 1 );
+
 				hits_to_add.push_back( hits_near_disk0[0] );
 				hits_to_add.push_back( hits_near_disk1[0] );
 				hits_to_add.push_back( hits_near_disk2[0] );
 				TVector3 p = trackFitter->refitTrackWithSiHits( _globalTracks[i], hits_to_add );
+
+				if ( p.Perp() == fitMoms[ i ].Perp() ){
+					hist[ "FitStatus" ] -> Fill( "BadReFit", 1 );
+					fitMoms[ i ] = TVector3( 1000, 1000, 1000 );
+				} else {
+					hist[ "FitStatus" ] -> Fill( "GoodReFit", 1 );
+				}
 
 				LOG_F( INFO, "Global track now has: %lu point", _globalTracks[i]->getNumPoints() );
 				LOG_F(INFO, "pt was: %0.2f and now is: %0.2f", fitMoms[ i ].Perp(), p.Perp() );
@@ -708,7 +720,7 @@ public:
 		} // loop on globals
 	} // addSiHits
 
-	std::vector<KiTrack::IHit *> findSiHitsNearMe( std::vector<KiTrack::IHit *> &available_hits, genfit::MeasuredStateOnPlane &msp, double dphi = 0.1 ){
+	std::vector<KiTrack::IHit *> findSiHitsNearMe( std::vector<KiTrack::IHit *> &available_hits, genfit::MeasuredStateOnPlane &msp, double dphi = 0.5 ){
 		LOG_SCOPE_FUNCTION( INFO );
 		double probe_phi = TMath::ATan2( msp.getPos().Y(), msp.getPos().X() );
 		double probe_r = sqrt( pow(msp.getPos().X(), 2) + pow(msp.getPos().Y(), 2) );
